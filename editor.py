@@ -3,11 +3,10 @@ import sys, tty, termios
 
 
 class Editor:
-    def __init__(self):
-        lines = [
-            line.replace("\n", "")
-            for line in open("random.txt").readlines()
-        ]
+    def __init__(self, filepath):
+        self.filepath = filepath
+        with open(self.filepath, "r") as fp:
+            lines = [line.replace("\n", "") for line in fp.readlines()]
         self.buffer = Buffer(lines)
         self.cursor = Cursor()
         self.history = []
@@ -21,7 +20,7 @@ class Editor:
                 self.render()
                 self.handle_input()
         except Exception as e:
-            print('\n' * 50)
+            print("\n" * 50)
             raise e
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
@@ -35,23 +34,25 @@ class Editor:
     def handle_input(self):
         # ASCII TABLE: http://www.physics.udel.edu/~watson/scen103/ascii.html
         ch = sys.stdin.read(1)
-        if ch == chr(17): # ctrl+q
-           sys.exit(0)
-        elif ch == chr(21): # ctrl+u
+        if ch == chr(17):  # ctrl+q
+            sys.exit(0)
+        elif ch == chr(21):  # ctrl+u
             self.restore_snapshot()
-        elif ch == chr(16): # ctrl+p
+        elif ch == chr(23):  # ctrl+w
+            self.save_changes()
+        elif ch == chr(16):  # ctrl+p
             self.cursor = self.cursor.up(self.buffer)
-        elif ch == chr(14): # ctrl+n
+        elif ch == chr(14):  # ctrl+n
             self.cursor = self.cursor.down(self.buffer)
-        elif ch == chr(2): # ctrl+b
+        elif ch == chr(2):  # ctrl+b
             self.cursor = self.cursor.left(self.buffer)
-        elif ch == chr(6): # ctrl+f
+        elif ch == chr(6):  # ctrl+f
             self.cursor = self.cursor.right(self.buffer)
-        elif ch == chr(13): # enter
+        elif ch == chr(13):  # enter
             self.save_snapshot()
             self.buffer = self.buffer.split_line(self.cursor.row, self.cursor.col)
             self.cursor = self.cursor.down(self.buffer).move_to_col(0)
-        elif ch == chr(127): # backspace
+        elif ch == chr(127):  # backspace
             if self.cursor.col > 0:
                 self.save_snapshot()
                 self.buffer = self.buffer.delete(self.cursor.row, self.cursor.col - 1)
@@ -67,6 +68,10 @@ class Editor:
     def restore_snapshot(self):
         if self.history:
             self.buffer, self.cursor = self.history.pop()
+
+    def save_changes(self):
+        with open(self.filepath, "w") as fp:
+            fp.writelines([line + "\n" for line in self.buffer.lines])
 
 
 class ANSI:
@@ -92,7 +97,7 @@ class Buffer:
 
     def render(self):
         for line in self.lines:
-            print(line, end='\r\n')
+            print(line, end="\r\n")
 
     def insert(self, char, row, col):
         lines = self.lines.copy()
@@ -103,12 +108,12 @@ class Buffer:
         lines = self.lines.copy()
         lines_arr = list(lines[row])
         del lines_arr[col]
-        lines[row] = ''.join(lines_arr)
+        lines[row] = "".join(lines_arr)
         return Buffer(lines)
 
     def split_line(self, row, col):
         lines = self.lines.copy()
-        lines[row:row + 1] = lines[row][:col], lines[row][col:]
+        lines[row : row + 1] = lines[row][:col], lines[row][col:]
         return Buffer(lines)
 
 
@@ -138,6 +143,7 @@ class Cursor:
     def move_to_col(self, col):
         return Cursor(self.row, col)
 
-if __name__ == '__main__':
-    editor = Editor()
+
+if __name__ == "__main__":
+    editor = Editor("random.txt")
     editor.run()
