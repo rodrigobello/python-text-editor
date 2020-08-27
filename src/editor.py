@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 import sys, tty, termios
+from buffer import Buffer
+from cursor import Cursor
+from ansi import ANSI
 
 
 class Editor:
@@ -72,76 +75,6 @@ class Editor:
     def save_changes(self):
         with open(self.filepath, "w") as fp:
             fp.writelines([line + "\n" for line in self.buffer.lines])
-
-
-class ANSI:
-    @classmethod
-    def clear_screen(cls):
-        print("[2J")
-
-    @classmethod
-    def move_cursor(cls, row, col):
-        print(f"[{row + 1};{col + 1}H")
-
-
-class Buffer:
-    def __init__(self, lines):
-        self.lines = lines
-
-    @property
-    def line_count(self):
-        return len(self.lines)
-
-    def line_length(self, row):
-        return len(self.lines[row])
-
-    def render(self):
-        for line in self.lines:
-            print(line, end="\r\n")
-
-    def insert(self, char, row, col):
-        lines = self.lines.copy()
-        lines[row] = lines[row][:col] + char + lines[row][col:]
-        return Buffer(lines)
-
-    def delete(self, row, col):
-        lines = self.lines.copy()
-        lines_arr = list(lines[row])
-        del lines_arr[col]
-        lines[row] = "".join(lines_arr)
-        return Buffer(lines)
-
-    def split_line(self, row, col):
-        lines = self.lines.copy()
-        lines[row : row + 1] = lines[row][:col], lines[row][col:]
-        return Buffer(lines)
-
-
-class Cursor:
-    def __init__(self, row=0, col=0):
-        self.row = row
-        self.col = col
-
-    def up(self, buffer):
-        return Cursor(self.row - 1, self.col).clamp(buffer)
-
-    def down(self, buffer):
-        return Cursor(self.row + 1, self.col).clamp(buffer)
-
-    def left(self, buffer):
-        return Cursor(self.row, self.col - 1).clamp(buffer)
-
-    def right(self, buffer):
-        return Cursor(self.row, self.col + 1).clamp(buffer)
-
-    def clamp(self, buffer):
-        clamp = lambda n, minn, maxn: max(min(maxn, n), minn)
-        row = clamp(self.row, 0, buffer.line_count - 1)
-        col = clamp(self.col, 0, buffer.line_length(row))
-        return Cursor(row, col)
-
-    def move_to_col(self, col):
-        return Cursor(self.row, col)
 
 
 if __name__ == "__main__":
